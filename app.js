@@ -16,12 +16,13 @@ var telegramBot = new tbot(config.telegram.apikey, {
     polling: true
 });
 
-var dict = new Dictionary();
-telegramBot.on('message', function(msg) {
+var myMap = new Map();
+
+telegramBot.on('message', function (msg) {
     if (msg['voice']) {
         var chatId = msg.chat.id;
-        telegramBot.getFileLink(msg.voice.file_id).then(function(voiceUrl) {
-            stt.telegramVoice(voiceUrl, function(err, resposta) {
+        telegramBot.getFileLink(msg.voice.file_id).then(function (voiceUrl) {
+            stt.telegramVoice(voiceUrl, function (err, resposta) {
                 var payload = {
                     workspace_id: {},
                     context: {},
@@ -29,11 +30,12 @@ telegramBot.on('message', function(msg) {
                         text: resposta.toString()
                     }
                 };
-                payload.context = dict.find(chatId);
 
-                conversation.call(payload, function(res) {
-                    dict.add(chatId, res.context);
-                    tts.sintetizar(res.output.text[0], function() {
+                payload.context = myMap.get(chatId);
+
+                conversation.call(payload, function (res) {
+                    myMap.set(chatId, res.context);
+                    tts.sintetizar(res.output.text[0], function () {
                         telegramBot.sendVoice(chatId, 'voice-audio.ogg');
                     });
                 });
@@ -46,40 +48,19 @@ telegramBot.on('message', function(msg) {
             context: {},
             input: msg
         };
-        payload.context = dict.find(chatId);
+        payload.context = myMap.get(chatId);
         if (payload.input.text.toLowerCase() == "/start") {
-            dict.remove(chatId);
+            myMap.delete(chatId);
             payload.context = {}
         }
-        conversation.call(payload, function(resposta) {
-            dict.add(chatId, resposta.context);
+        conversation.call(payload, function (resposta) {
+            myMap.set(chatId, resposta.context);
             telegramBot.sendMessage(chatId, resposta.output.text[0]);
         });
     }
 
 });
 
-function Dictionary() {
-    //www.java2s.com
-    this.datastore = new Array();
-    this.add = add;
-    this.datastore = new Array();
-    this.find = find;
-    this.remove = remove;
-}
-
-function add(key, value) {
-    this.datastore[key] = value;
-}
-
-function find(key) {
-    return this.datastore[key];
-}
-
-function remove(key) {
-    delete this.datastore[key];
-}
-
-app.listen(3000, function() {
+app.listen(3000, function () {
     console.log("server starting on " + appEnv.url);
 });
